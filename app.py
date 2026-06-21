@@ -229,7 +229,7 @@ and encouraging throughout."""
 
                 # ── Call Groq API ─────────────────────────────
                 response = client.chat.completions.create(
-                    model="llama3-70b-8192",
+                    model="llama-3.3-70b-versatile",
                     max_tokens=2000,
                     temperature=0.7,
                     messages=[
@@ -314,7 +314,7 @@ if user_input := st.chat_input(
                 )
 
                 chat_response = client.chat.completions.create(
-                    model="llama3-70b-8192",
+                    model="llama-3.3-70b-versatile",
                     max_tokens=1000,
                     temperature=0.7,
                     messages=[
