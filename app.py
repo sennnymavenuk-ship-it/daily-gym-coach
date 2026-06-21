@@ -1,10 +1,10 @@
 # ══════════════════════════════════════════════════════════════
 # Daily Gym Coach App
-# Built with Streamlit + Claude API
+# Built with Streamlit + Groq API (Free)
 # ══════════════════════════════════════════════════════════════
 
 import streamlit as st
-import anthropic
+from groq import Groq
 
 # ── Page Configuration ────────────────────────────────────────
 st.set_page_config(
@@ -13,9 +13,42 @@ st.set_page_config(
     layout="centered"
 )
 
-# ── App Title and Description ─────────────────────────────────
+# ── Custom CSS Styling ────────────────────────────────────────
+st.markdown("""
+    <style>
+    .main {
+        background-color: #0f0f0f;
+    }
+    .stButton > button {
+        background-color: #02C39A;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 10px;
+        padding: 10px;
+        border: none;
+    }
+    .stButton > button:hover {
+        background-color: #028090;
+        color: white;
+    }
+    h1 {
+        color: #02C39A;
+    }
+    h2, h3 {
+        color: #0A7EA4;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ── App Header ────────────────────────────────────────────────
 st.title("🏋️ Daily Gym Coach")
 st.subheader("Your FREE Personal AI Fitness Coach")
+st.markdown(
+    "Fill in your details below and get a fully "
+    "personalised workout plan, nutrition advice "
+    "and daily motivation — completely free! 💪"
+)
 st.markdown("---")
 
 # ── User Input Form ───────────────────────────────────────────
@@ -26,81 +59,129 @@ col1, col2 = st.columns(2)
 with col1:
     goal = st.selectbox(
         "🎯 Your Fitness Goal",
-        ["Lose Weight", "Build Muscle", 
-         "Improve Fitness", "Increase Strength",
-         "Improve Flexibility", "General Health"]
+        [
+            "Lose Weight",
+            "Build Muscle",
+            "Improve Fitness",
+            "Increase Strength",
+            "Improve Flexibility",
+            "General Health"
+        ]
     )
-    
+
     level = st.selectbox(
         "📊 Your Fitness Level",
         ["Beginner", "Intermediate", "Advanced"]
     )
-    
+
     days = st.selectbox(
         "📅 Training Days Per Week",
-        ["2 days", "3 days", "4 days", 
+        ["2 days", "3 days", "4 days",
          "5 days", "6 days"]
+    )
+
+    age = st.number_input(
+        "🎂 Your Age",
+        min_value=16,
+        max_value=80,
+        value=30
     )
 
 with col2:
     equipment = st.multiselect(
         "🏋️ Equipment Available",
-        ["No equipment (bodyweight only)",
-         "Dumbbells", "Barbell", 
-         "Resistance bands", "Pull up bar",
-         "Treadmill", "Full gym access",
-         "Kettlebells", "Exercise bike"],
+        [
+            "No equipment (bodyweight only)",
+            "Dumbbells",
+            "Barbell",
+            "Resistance bands",
+            "Pull up bar",
+            "Treadmill",
+            "Full gym access",
+            "Kettlebells",
+            "Exercise bike"
+        ],
         default=["No equipment (bodyweight only)"]
     )
-    
+
     energy = st.selectbox(
         "⚡ Energy Level Today",
-        ["High — feeling great!",
-         "Medium — feeling okay",
-         "Low — feeling tired",
-         "Very low — exhausted"]
+        [
+            "High — feeling great!",
+            "Medium — feeling okay",
+            "Low — feeling tired",
+            "Very low — exhausted"
+        ]
     )
-    
+
+    gender = st.selectbox(
+        "👤 Gender",
+        ["Male", "Female", "Prefer not to say"]
+    )
+
     injuries = st.text_input(
-        "🩹 Any Injuries? (or type None)",
-        placeholder="e.g. Bad knee, lower back pain"
+        "🩹 Any Injuries or Health Conditions?",
+        placeholder="e.g. Bad knee, lower back pain "
+                    "or type None"
     )
 
 st.markdown("---")
+
+# ── Nutrition Section ─────────────────────────────────────────
 st.markdown("### 🍽️ Nutrition Check")
 
 food_today = st.text_area(
     "What have you eaten today?",
     placeholder="e.g. Porridge for breakfast, "
-                "chicken salad for lunch...",
+                "chicken salad for lunch, "
+                "apple as a snack...",
     height=80
+)
+
+water = st.selectbox(
+    "💧 How much water have you drunk today?",
+    [
+        "Less than 1 litre",
+        "About 1 litre",
+        "About 1.5 litres",
+        "2 litres or more"
+    ]
 )
 
 st.markdown("---")
 
-# ── Generate Button ───────────────────────────────────────────
-if st.button("🚀 Generate My Daily Plan!", 
-             use_container_width=True,
-             type="primary"):
-    
+# ── Generate Plan Button ──────────────────────────────────────
+generate = st.button(
+    "🚀 Generate My Daily Plan!",
+    use_container_width=True,
+    type="primary"
+)
+
+if generate:
     if not equipment:
-        st.warning("Please select at least one equipment option!")
+        st.warning(
+            "⚠️ Please select at least "
+            "one equipment option!"
+        )
     else:
         equipment_str = ", ".join(equipment)
-        
-        # ── Show loading spinner ──────────────────────────────
-        with st.spinner("Your coach is preparing your plan... 💪"):
-            
+
+        with st.spinner(
+            "Your coach is preparing your "
+            "personalised plan... 💪"
+        ):
             try:
-                client = anthropic.Anthropic(
-                    api_key=st.secrets["ANTHROPIC_API_KEY"]
+                client = Groq(
+                    api_key=st.secrets["GROQ_API_KEY"]
                 )
-                
-                # ── Build the prompt ──────────────────────────
-                prompt = f"""You are an expert personal fitness 
-coach. Create a complete daily fitness plan for this person:
+
+                prompt = f"""You are an expert personal 
+fitness coach. Create a complete and detailed daily 
+fitness plan for this person:
 
 PROFILE:
+- Age: {age}
+- Gender: {gender}
 - Fitness Goal: {goal}
 - Fitness Level: {level}
 - Training Days Per Week: {days}
@@ -108,127 +189,183 @@ PROFILE:
 - Energy Level Today: {energy}
 - Injuries or Conditions: {injuries or 'None'}
 - Food eaten today: {food_today or 'Not provided'}
+- Water intake today: {water}
 
-Please provide ALL of the following in a clear, 
-friendly and motivating way:
+Please provide ALL of the following clearly 
+and in a friendly motivating way:
 
-1. TODAYS WORKOUT PLAN
-   - List 5 to 7 exercises
-   - For each exercise include:
-     * Sets and reps
-     * Rest time
-     * Body parts worked
-     * Simple form tip
-   - Make it suitable for their level and equipment
+🏋️ TODAYS WORKOUT PLAN
+List 5 to 7 exercises suitable for their 
+level and available equipment.
+For each exercise include:
+- Exercise name
+- Sets and reps
+- Rest time between sets
+- Body parts worked
+- One simple form tip to avoid injury
+End with a 5 minute warm up and 
+5 minute cool down routine.
 
-2. NUTRITION ADVICE
-   - Review what they ate today
-   - Suggest what to eat for remaining meals
-   - Keep it practical and realistic
+🥗 NUTRITION ADVICE
+- Review what they have eaten today honestly
+- Suggest what to eat for remaining meals
+- Include protein, carbs and healthy fats advice
+- Suggest hydration improvements if needed
+- Keep advice simple and realistic
 
-3. DAILY MOTIVATION MESSAGE
-   - Personal and energising
-   - Acknowledge their energy level today
-   - Short and punchy
+💪 DAILY MOTIVATION MESSAGE
+- Make it personal based on their energy level
+- Keep it short, punchy and energising
+- End with a powerful one line affirmation
 
-4. RECOVERY TIPS
-   - 3 stretches to do after workout
-   - Sleep and hydration advice
-   - Any warnings based on their injuries
+🔄 RECOVERY AND INJURY TIPS
+- 3 specific stretches to do after the workout
+- Sleep recommendation for their goal
+- Any specific advice based on their injuries
+- Warning signs to watch out for
 
-Keep everything practical, safe and achievable. 
-Use encouraging language throughout."""
+Keep everything practical, safe, achievable 
+and encouraging throughout."""
 
-                # ── Call Claude API ───────────────────────────
-                message = client.messages.create(
-                    model="claude-sonnet-4-6",
+                # ── Call Groq API ─────────────────────────────
+                response = client.chat.completions.create(
+                    model="llama3-70b-8192",
                     max_tokens=2000,
+                    temperature=0.7,
                     messages=[
-                        {"role": "user", "content": prompt}
+                        {
+                            "role": "system",
+                            "content": "You are a friendly, "
+                            "expert personal fitness coach "
+                            "who creates safe, practical and "
+                            "motivating workout plans."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
                     ]
                 )
-                
-                response = message.content[0].text
-                
+
+                result = response.choices[0].message.content
+
                 # ── Display Results ───────────────────────────
                 st.markdown("---")
                 st.success("✅ Your Daily Plan is Ready!")
-                
-                st.markdown("## 📋 Your Personalised Daily Plan")
-                st.markdown(response)
-                
+                st.balloons()
+
+                st.markdown(
+                    "## 📋 Your Personalised Daily Plan"
+                )
+                st.markdown(result)
+
                 # ── Download Button ───────────────────────────
+                st.markdown("---")
                 st.download_button(
                     label="📥 Download My Plan as Text File",
-                    data=response,
+                    data=result,
                     file_name="my_gym_plan_today.txt",
                     mime="text/plain",
                     use_container_width=True
                 )
-                
+
             except Exception as e:
                 st.error(f"Something went wrong: {e}")
-                st.info("Please check your API key is set up correctly")
+                st.info(
+                    "Please check your GROQ_API_KEY "
+                    "is set correctly in Streamlit secrets"
+                )
 
 st.markdown("---")
 
 # ── Chat Section ──────────────────────────────────────────────
 st.markdown("### 💬 Ask Your Coach Anything")
+st.markdown(
+    "Have a question about your workout, "
+    "nutrition or fitness? Ask below! 👇"
+)
 
+# Initialise chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat history
+# Display existing chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Chat input
-if prompt_input := st.chat_input(
+# Chat input box
+if user_input := st.chat_input(
         "Ask your coach a question..."):
-    
+
+    # Add user message to history
     st.session_state.messages.append(
-        {"role": "user", "content": prompt_input})
-    
+        {"role": "user", "content": user_input}
+    )
+
     with st.chat_message("user"):
-        st.markdown(prompt_input)
-    
+        st.markdown(user_input)
+
     with st.chat_message("assistant"):
-        with st.spinner("Coach is thinking..."):
+        with st.spinner("Coach is thinking... 🤔"):
             try:
-                client = anthropic.Anthropic(
-                    api_key=st.secrets["ANTHROPIC_API_KEY"]
+                client = Groq(
+                    api_key=st.secrets["GROQ_API_KEY"]
                 )
-                
-                chat_response = client.messages.create(
-                    model="claude-sonnet-4-6",
+
+                chat_response = client.chat.completions.create(
+                    model="llama3-70b-8192",
                     max_tokens=1000,
-                    system="""You are a friendly, 
-knowledgeable personal fitness coach. Answer 
-questions about fitness, nutrition, recovery 
-and health in a warm, encouraging and practical 
-way. If asked about injuries always recommend 
-seeing a professional.""",
+                    temperature=0.7,
                     messages=[
-                        {"role": m["role"], 
-                         "content": m["content"]}
+                        {
+                            "role": "system",
+                            "content": """You are a friendly, 
+knowledgeable and experienced personal fitness coach. 
+Answer all questions about fitness, nutrition, 
+recovery and health in a warm, encouraging and 
+practical way. Always give specific actionable advice. 
+If asked about pain or injuries always recommend 
+seeing a qualified medical professional. 
+Never give medical diagnoses."""
+                        }
+                    ] + [
+                        {
+                            "role": m["role"],
+                            "content": m["content"]
+                        }
                         for m in st.session_state.messages
                     ]
                 )
-                
-                reply = chat_response.content[0].text
+
+                reply = (
+                    chat_response.choices[0]
+                    .message.content
+                )
+
                 st.markdown(reply)
+
+                # Add reply to chat history
                 st.session_state.messages.append(
-                    {"role": "assistant", 
-                     "content": reply})
-                     
+                    {"role": "assistant",
+                     "content": reply}
+                )
+
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Chat error: {e}")
+
+# ── Clear Chat Button ─────────────────────────────────────────
+if st.session_state.messages:
+    if st.button("🗑️ Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
 
 # ── Footer ────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(
-    "<center>Built with ❤️ by Senthil | "
-    "Powered by Claude AI</center>",
+    "<center>🏋️ Daily Gym Coach | "
+    "Built with ❤️ by Senthil | "
+    "Powered by Groq AI | "
+    "Completely Free 💪</center>",
     unsafe_allow_html=True
 )
